@@ -13,7 +13,7 @@ aufrufen will so geling dies.'''
 class ProxyTest (unittest.TestCase):
 
     def setUp (self):
-        proxy = "localhost"
+        proxy = "192.168.2.128"
         port = 53883
 
         fp = webdriver.FirefoxProfile()
@@ -48,11 +48,11 @@ class ProxyTest (unittest.TestCase):
     def test_http_passthrough(self):
         # tests http connection with different address formats
         
-        self.browser.get('http://www.example.com')
-        self.assertIn('Example Domain', self.browser.title)
+       # self.browser.get('http://www.example.com')
+       # self.assertIn('Example Domain', self.browser.title)
 
-        #self.browser.get('http://www.spiegel.de')
-        #self.assertIn('SPIEGEL ONLINE', self.browser.title)
+        self.browser.get('http://www.spiegel.de')
+        self.assertIn('SPIEGEL ONLINE', self.browser.title)
 
 if __name__ == '__main__':
     unittest.main()
