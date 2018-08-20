@@ -11,12 +11,14 @@ BLOCK_SIZE = 4096
 connections = {}
 
 def start_https_tunnel(client, host, port):
-    #starts the http tunnel
-    #it opens a new thread, so 2 threads are needed one listens on the client and
-    #the other listens on the server
-    #client is a socket from the user agent,
-    #host and port is the server
-
+    """starts the tls tunnel betwenn client and serve
+    it opens a new thread,and new socket to the server  so 2 threads are used one listens on the client and
+    the other listens on the server for new data which is forwarded immediately
+    args:
+        client  - is a socket to the user agent
+        host    - string name of the server
+        port    - int prot of the server
+    """
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
     server.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 10)
@@ -31,9 +33,12 @@ def start_https_tunnel(client, host, port):
     t.join()
     server.close()
 
-def tunnel(from_socket, to_socket):
-    #listens on from_socket and tunnels data to to_socket 
-    
+def tunnel(from_socket, to_socket): 
+    """reads data on from_socket buffer and forwads the data to to_socket
+    args:
+        from_socket : the socket the data is read
+        to_socket   : the socket the data is forwarded to
+    """
 
     while True:
         try:
@@ -49,16 +54,15 @@ def tunnel(from_socket, to_socket):
             break
 
 
-def handle_http_request(request, host, port):
-    #sends the request to the server over a existing connection or creates a new one
-    #handles also the response
-    pass
-
-
-
 def handle_connection(client, address):
-    #takes care of the connection
-
+    """ determines whether the request from the incoming connection is http or https and handles it approbiately
+    if the request is has a CONNECT command a tls tunnel is initiated
+    if the request is something different it will be forwarded to the host therefore it is checked whether a connection exists
+    to the host when not a new (maybe two or more) one is created
+    args:
+        client  - the incoming connection
+        address  - the address of the incomming connection
+    """
 
     request = client.recv(BLOCK_SIZE) #nutzen noch ueberpruefen
     if request == "":
@@ -85,22 +89,23 @@ def handle_connection(client, address):
             connections[(host, port)] = [server]
         server.sendall(request)
         print request
-        #response = get_response(server)
-        response = server.recv(BLOCK_SIZE)
+        response = get_response(server)
+        #response = server.recv(BLOCK_SIZE)
         print response
         client.sendall(response)
 
     client.close()
-    return 0
 
 
 def parse_status_header(header):
-    #parses header in a dictionary
-    #return dictionary 
-    #key                : value
-    #status             : status_line
-    #header_field_name  : value
-    #i.e::Content-Length: 10
+    """parses header in a dictionary
+    status             : status_line
+    header_field_name  : value
+    args:
+        the header of the request or response
+    return:
+        dictionary 
+    """
 
     header_dict = {}
     header_dict['status_line'] = header.split('\r\n')[0]
@@ -109,21 +114,40 @@ def parse_status_header(header):
         if field != "": 
             key, value = field.split(': ')
             header_dict[key] = value
-    return header_dict
+     return header_dict
 
 
 def get_response(server):
-    #reads the response from the server and returns it
+    """reads the response from the server to the end and returns it
+    Eceptions noch rein .... fuers empfangen 
+    args:
+        server  : socket to the server
+    return:
+        response string
+    """
+    while True:
+        data = server.recv(BLOCK_SIZE)
+        if "\r\n\r\n" in data:
+            statusline_header, body = data.split("\r\n\r\n")
+            header = parse_status_header(statusline_header)
+            break
+    while header[Content-Length] != len(body):
+        body = body += server.recv(BLOCK_SIZE)
+    return header + "\r\n\r\n" + body
 
-    data = server.recv(BLOCK_SIZE)
-    if "\r\n\r\n" in data:
-        statusline_header, body = data.split("\r\n\r\n")
-        header = parse_status_header(statusline_header)
-    
 
 def get_host_port (request):
-    #returns the host and port, given the http request
+    """determines the host and port to which the request should be sent
+    fusionieren mit der header funktion moeglich???
 
+    if a host field is given the host and port is retrieved from there,
+    otherways it is retrieved from the URI
+    args:
+        request - request string
+    return:
+        host    - the host string
+        port    - the port as integer
+    """
     port = 80
     lines = request.split('\r\n')
     host = "errorurl"
@@ -150,21 +174,21 @@ def get_host_port (request):
             user_host_path_port = address.split('://')[1]
         else:
             user_host_path_port = address
-        
+
         host_path_array = user_host_path_port.split(':')
         if len(host_path_array) > 1:
-            port_str = "" 
+            port_str = ""
             for d in host_path_array[-1]:
                 if (ord(d) >= 48 and ord(d) <= 57):
                     port_str += d
                 else:
                     break
             port = int(port_str)
-            
+
         host_path = host_path_array[0]
         host = host_path.split('/')[0]
 
-    return host, port
+    return host,  port
 
 
 if __name__ == '__main__':
@@ -176,7 +200,7 @@ if __name__ == '__main__':
     while True:
         client, address = server.accept()
         t = threading.Thread(target = handle_connection, args = (client, address))
-        t.start()
+        t.start() 
 
 
 
