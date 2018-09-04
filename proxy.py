@@ -94,7 +94,7 @@ def handle_connection(client, address):
         print response
         client.sendall(response)
 
-    client.close()
+    #client.close()
 
 
 def parse_status_header(header):
@@ -111,10 +111,10 @@ def parse_status_header(header):
     header_dict['status_line'] = header.split('\r\n')[0]
     header_fields = header.split('\r\n')[1:]
     for field in header_fields:
-        if field != "": 
-            key, value = field.split(': ')
+        if field != "":
+            key, value = field.split(': ')# Exception hier kann es wohl mehr als 2 geben
             header_dict[key] = value
-     return header_dict
+    return header_dict
 
 
 def get_response(server):
@@ -130,10 +130,13 @@ def get_response(server):
         if "\r\n\r\n" in data:
             statusline_header, body = data.split("\r\n\r\n")
             header = parse_status_header(statusline_header)
+            print header["Content-Length"]
+            print len(body)
             break
-    while header[Content-Length] != len(body):
-        body = body += server.recv(BLOCK_SIZE)
-    return header + "\r\n\r\n" + body
+    while int(header["Content-Length"]) != len(body):
+        chunk = server.recv(BLOCK_SIZE)
+        body += chunk
+    return statusline_header + "\r\n\r\n" + body
 
 
 def get_host_port (request):
